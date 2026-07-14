@@ -19,13 +19,27 @@ pipeline {
             }
         }
 
-        stage('Ejecutar pruebas') {
-            steps {
-                dir("${APP_DIR}") {
-                    sh 'mvn -B test'
-                }
-            }
+            stage('Ejecutar pruebas') {
+    steps {
+        dir("${APP_DIR}") {
+            sh '''
+                MYSQL_IP=$(docker inspect \
+                  -f '{{(index .NetworkSettings.Networks "vehiculos-net").IPAddress}}' \
+                  mysql-container)
+
+                if [ -z "$MYSQL_IP" ]; then
+                    echo "No fue posible obtener la IP de mysql-container"
+                    exit 1
+                fi
+
+                echo "Ejecutando pruebas con la base MySQL del entorno Docker"
+
+                SPRING_DATASOURCE_URL="jdbc:mysql://${MYSQL_IP}:3306/Sucursal?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true" \
+                mvn -B test
+            '''
         }
+    }
+}
 
         stage('Compilar aplicación') {
             steps {
